@@ -38,6 +38,10 @@ typedef std::function<double(double, int, const vector_1_d &,
 #define SQRTBIG (1.e150)
 #define SIGN(a, b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
 
+#define MIXMAX 200 /* max number of charge mixing iteration */
+#define ECONVERGENCE 1.e-12
+
+
 template<typename T>
 int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 

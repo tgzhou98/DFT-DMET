@@ -44,4 +44,22 @@ vector_3_d getallPsi(const vector_2_d &E, int lmax, vector_1_i nmax,
 vector_1_d getRho(const vector_3_d &Psi, const vector_2_d &F, int lmax,
                   const vector_1_i &nmax, int N);
 
+double excPZ(double rs);
+
+double excpPZ(double rs);
+
+double exc(double rs);
+
+double excp(double rs);
+
+vector_1_d getVxc(vector_1_d Rho, const vector_1_d &r, const vector_1_d &dr, int N);
+
+vector_1_d getDelta_eps_xc(vector_1_d Rho, const vector_1_d &r, const vector_1_d &dr, int N);
+
+double getExc(std::function<double(double)> exc,
+              const vector_1_d &Rho,
+              const vector_1_d &r,
+              const vector_1_d &dr,
+              int N);
+
 #endif // DFT_PHYSICS_H

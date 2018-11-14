@@ -379,6 +379,245 @@ TEST(schrodinger, getphi_debug) {
   EXPECT_NEAR(simpson(integrand, r, dr, N) / 2, 5.0 / 16.0, 1e-14);
 }
 
+TEST(DFT, exchange_func) {
+//  // prove the derivative
+//  double rs, drs = 1e-4;
+//
+  double rs, drs;
+
+  rs = 3.; /* Test rs > 1 "branch" */
+  printf("Testing derivative for rs=%f ...\n", rs);
+  for (drs = 1; drs > 1e-6; drs /= 10)
+    printf("    %20.16f %20.16f\n", drs,
+           (excPZ(rs + drs) - excPZ(rs)) / drs /* <- Finite difference slope */
+               /                             /* Ratio should approach 1! */
+                   excpPZ(rs)                    /* <- Coded value of derivative */
+    );
+
+  printf("\n");
+
+  rs = 0.3; /* Test rs < 1 "branch" */
+  printf("Testing derivative for rs=%f ...\n", rs);
+  for (drs = 1; drs > 1e-6; drs /= 10)
+    printf("    %20.16f %20.16f\n", drs,
+           (excPZ(rs + drs) - excPZ(rs)) / drs /* <- Finite difference slope */
+               /                             /* Ratio should approach 1! */
+                   excpPZ(rs)                    /* <- Coded value of derivative */
+    );
+
+  drs = 10e-5;
+  rs = 3.; /* Test rs > 1 "branch" */
+  EXPECT_NEAR((excPZ(rs + drs) - excPZ(rs)) / drs / excpPZ(rs), 1.0, 1e-4);
+
+  rs = 0.3; /* Test rs < 1 "branch" */
+  EXPECT_NEAR((excPZ(rs + drs) - excPZ(rs)) / drs / excpPZ(rs), 1.0, 4 * 1e-4);
+
+}
+
+TEST(DFT, getxc_debug) {
+  /*working variable*/
+  double x;
+  /* Set up grid */
+  int N = 40000;
+  /* Specifications for carbon */
+  double Z = 1.0;
+  int lmax = 0;
+  int nmaxmax = 0;
+  vector_1_i nmax(lmax + 1);
+  nmax[0] = 0;
+
+  /*physics */
+  vector_2_d E;
+  vector_3_d Psi;
+  // initial charge densitty
+  vector_1_d Rho(N + 1, 0.0);
+  vector_1_d Vxc;
+  vector_1_d DeltaE_xc;
+  vector_1_d r(N + 1);
+  vector_1_d dr(N + 1);
+  vector_1_d V(N + 1);
+  vector_2_d F(1);
+  vector_1_d phi(N + 1);
+  for (int l = 0; l <= lmax; l++) {
+    if (nmax[l] > nmaxmax)
+      nmaxmax = nmax[l];
+  }
+
+  for (int i = 0; i <= lmax; ++i) {
+    F[i].resize(nmaxmax + 1);
+  }
+  F[0][0] = 1.0; /* 1 electrons in 1s */
+  //  F[0][1] = 2.; /* 2 electrons in 2s */
+  //  F[1][0] = 2.; /* 2 electrons in 2p */
+
+  /* The rest is now general for ANY case */
+  for (int k = 0; k <= N; k++) {
+    x = ((double) k) / ((double) N);
+    r[k] = 1 / (1 - x) - 1 - x;
+    dr[k] = 1 / (1 - x) / (1 - x) - 1;
+  }
+  dr[N] = 0.;
+
+  /* Test section */
+  // Rho is zero
+  phi = getphi(Rho, r, dr, N);
+  Vxc = getVxc(Rho, r, dr, N);
+
+  // important
+  // Define new potential V
+  for (int k = 0; k <= N; ++k) {
+    V[k] = -Z / r[k] + phi[k] + Vxc[k];
+//    std::cout << r[k] << " "<< phi[k] << " "<< Vxc[k] << " " << std::endl;
+  }
+  // still consider boundary condition
+  V[0] = 0.0;
+
+  // new iteration
+  E = getallEs(lmax, nmax, Z, V, r, dr, N);
+  Psi = getallPsi(E, lmax, nmax, V, r, dr, N);
+  Rho = getRho(Psi, F, lmax, nmax, N); // there Rho is updated!!!!
+
+  // new Vxc solver
+  Vxc = getVxc(Rho, r, dr, N);
+  DeltaE_xc = getDelta_eps_xc(Rho, r, dr, N);
+
+
+  // test Vxc potential
+  vector_1_d integrand(N + 1);
+  for (int k = 0; k <= N; ++k) {
+    integrand[k] = Vxc[k] * Rho[k];
+  }
+
+  EXPECT_NEAR(simpson(integrand, r, dr, N), -0.3315027563, 1e-10);
+
+  // test Delta E_xc potential
+  for (int k = 0; k <= N; ++k) {
+    integrand[k] = DeltaE_xc[k] * Rho[k];
+  }
+
+  //  std::cout << "Total charge is: " << simpson(Rho, r, dr, N) << std::endl;
+  EXPECT_NEAR(simpson(integrand, r, dr, N), 0.0773497767, 1e-10);
+
+}
+
+TEST(DFT, test_atoms) {
+  /*working variable*/
+  double x;
+  /* Set up grid */
+  int N = 4000;
+  int mixloop = 0;
+  double alpha = 0.25;
+  double Ediff = BIG;// a big number, not converge at the first iteration
+  double Etemp = BIG; // a big number
+  double Etot = BIG; // a big number, not converge at the first iteration
+  /* Specifications for carbon */
+  double Z = 1.0;
+  int lmax = 0;
+  int nmaxmax = 0;
+  vector_1_i nmax(lmax + 1);
+  nmax[0] = 0;
+
+  /*physics */
+  vector_2_d E;
+  vector_3_d Psi;
+  // initial charge densitty
+  vector_1_d integrand(N + 1);
+  vector_1_d Rho(N + 1, 0.0);
+  vector_1_d Rhonew;
+  vector_1_d Vxc;
+  vector_1_d DeltaE_xc;
+  vector_1_d r(N + 1);
+  vector_1_d dr(N + 1);
+  vector_1_d V(N + 1);
+  vector_2_d F(1);
+  vector_1_d phi(N + 1);
+  for (int l = 0; l <= lmax; l++) {
+    if (nmax[l] > nmaxmax)
+      nmaxmax = nmax[l];
+  }
+
+  for (int i = 0; i <= lmax; ++i) {
+    F[i].resize(nmaxmax + 1);
+  }
+  F[0][0] = 1.0; /* 1 electrons in 1s */
+  //  F[0][1] = 2.; /* 2 electrons in 2s */
+  //  F[1][0] = 2.; /* 2 electrons in 2p */
+
+  /* The rest is now general for ANY case */
+  for (int k = 0; k <= N; k++) {
+    x = ((double) k) / ((double) N);
+    r[k] = 1. / (1. - x) - 1. - x - x * x - x * x * x;
+    dr[k] = 1. / (1. - x) / (1. - x) - 1. - 2. * x - 3. * x * x;
+  }
+  dr[N] = 0.;
+
+  while (mixloop < MIXMAX && Ediff > ECONVERGENCE) {
+    if (mixloop > 0) {
+      for (int k = 0; k <= N; k++)
+        Rho[k] = (1. - alpha) * Rho[k] + alpha * Rhonew[k];
+    }
+
+    /* Test section */
+    // Rho is zero
+    phi = getphi(Rho, r, dr, N);
+    Vxc = getVxc(Rho, r, dr, N);
+
+    // important
+    // Define new potential V
+    for (int k = 0; k <= N; ++k) {
+      V[k] = -Z / r[k] + phi[k] + Vxc[k];
+//    std::cout << r[k] << " "<< phi[k] << " "<< Vxc[k] << " " << std::endl;
+    }
+    // still consider boundary condition
+    V[0] = 0.0;
+
+    // new iteration
+    E = getallEs(lmax, nmax, Z, V, r, dr, N);
+    Psi = getallPsi(E, lmax, nmax, V, r, dr, N);
+    Rhonew = getRho(Psi, F, lmax, nmax, N); // there Rho is updated!!!!
+
+    // new Vxc solver
+    // Attention, there use Rho to calculate Vxc instead of Rhonew
+//    Vxc = getVxc(Rho, r, dr, N);
+    DeltaE_xc = getDelta_eps_xc(Rho, r, dr, N);
+
+
+    // test Vxc potential
+    for (int k = 0; k <= N; ++k) {
+      integrand[k] = (-phi[k] / 2.0 + DeltaE_xc[k]) * Rho[k];
+    }
+    Etemp = Etot;
+    Etot = simpson(integrand, r, dr, N);
+
+    for (int l = 0; l <= lmax; ++l) {
+      // BUGFIX
+      // n has equal number
+      for (int n = 0; n <= nmax[l]; ++n) {
+        Etot += F[l][n] * E[l][n];
+      }
+    }
+    Ediff = std::fabs(Etemp - Etot);
+    std::cout << "Charge mixing step " << mixloop << " - Etot: " << Etot << std::endl;
+    mixloop++;
+  }
+
+  if (mixloop == MIXMAX) {
+    std::cerr << "converge is not achived in " << MIXMAX << "loop" << std::endl;
+    exit(1);
+  } else {
+    // calculate nuclear energy
+    std::cout << "converge is achived in " << mixloop << "loop" << std::endl;
+    for (int k = 0; k <= N; ++k) {
+      integrand[k] = -Z / r[k];
+    }
+    std::cout << "nuclear energy is: " << simpson(integrand, r, dr, N) << std::endl;
+    std::cout << "Vxc energy is: " << getExc(exc, Rho, r, dr, N) << std::endl;
+  }
+
+  //  std::cout << "Total charge is: " << simpson(Rho, r, dr, N) << std::endl;
+  EXPECT_NEAR(Etot, -0.445671, 1e-6);
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

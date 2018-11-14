@@ -339,3 +339,191 @@ vector_1_d getphi(vector_1_d &Rho, const vector_1_d &r, const vector_1_d &dr,
   phi[0] = 0.;
   return phi;
 }
+
+double excPZ(double rs) {
+/*
+
+    Return values:
+
+    * exc: value of Perdew-Zunger form for epsilon_{xc}(r_s)
+    * excp: value of Perdew-Zunger form for epsilon_{xc}'(r_s) = d epsilon_{xc}/d r_s
+
+    Input:
+
+    * rs: value of r_s =(4*pi*n/3)^-1/3
+
+*/
+  // triple check the constant !!!!!!!!!!!!!!
+  // BUGFIX
+  const double
+      a = 0.0311,
+      b = -0.0480,
+      c = 0.0020,
+      d = -0.0116,
+      A = -0.1423,
+      B = 1.0529,
+      C = 0.3334,
+      pi = std::atan(1.0) * 4.0,
+      alpha = 0.75 * std::pow(3.0 / 2.0 / pi, 2.0 / 3.0);
+
+  if (rs < 0) {
+    std::cerr << "error from excP: rs must be positive! But rs = " << rs << std::endl;
+    exit(1);
+  }
+  if (rs < 1) {
+//    return (-alpha / rs + a * std::log(rs) + b + c * rs * std::log(rs) + d * rs);
+    return (-alpha / rs + (a + c * rs) * log(rs) + b + d * rs);
+  } else {
+    return (-alpha / rs + A / (1 + B * std::sqrt(rs) + C * rs));
+  }
+
+}
+
+double excpPZ(double rs) {
+/*
+
+    Return values:
+
+    * excp: value of Perdew-Zunger form for epsilon_{xc}'(r_s) = d epsilon_{xc}/d r_s
+
+    Input:
+
+    * rs: value of r_s =(4*pi*n/3)^-1/3
+
+*/
+  const double
+      a = 0.0311,
+      b = -0.0480,
+      c = 0.0020,
+      d = -0.0116,
+      A = -0.1423,
+      B = 1.0529,
+      C = 0.3334,
+      pi = 4. * std::atan(1.),
+      alpha = 0.75 * std::pow((3. / 2. / pi), (2. / 3.));
+
+  if (rs < 0.) {
+    std::cerr << "error from excPZ: rs must be positive! But rs = " << rs << std::endl;
+    exit(1);
+  }
+
+  if (rs < 1.)
+    return (alpha / rs / rs + a / rs + c * (1. + std::log(rs)) + d);
+  else
+    return (alpha / rs / rs - A * (C + B / 2. / std::sqrt(rs)) / std::pow(1. + B * std::sqrt(rs) + C * rs, 2));
+}
+
+double exc(double rs) {
+/* compute epsilon_xc(rs) in WMN form within LSDA */
+
+  /* constants */
+  const double
+      pi = 4. * atan(1.),
+      X1 = 0.75 * pow(3.0 / (2.0 * pi), 2.0 / 3.0),  /* Exchange energy coeff */
+      A = 0.0310907,
+      x0 = -0.10498,
+      b = 3.72744,
+      c = 12.9352,
+      Q = sqrt(4 * c - b * b),
+      X0 = x0 * x0 + b * x0 + c;
+
+  double x = sqrt(rs), X = x * x + b * x + c;
+
+  return -X1 / rs
+      + A * (
+          +log(x * x / X) + 2 * b / Q * atan(Q / (2 * x + b))
+              - (b * x0) / X0 * (
+                  log((x - x0) * (x - x0) / X) + 2 * (2 * x0 + b) / Q * atan(Q / (2 * x + b))
+              )
+      );
+}
+
+double excp(double rs) {
+/* compute epsilon'_xc(rs) in WMN form within LSDA */
+
+  /* constants */
+  const double
+      pi = 4. * atan(1.),
+      X1 = 0.75 * pow(3.0 / (2.0 * pi), 2.0 / 3.0),  /* Exchange energy coeff */
+      A = 0.0310907,
+      x0 = -0.10498,
+      b = 3.72744,
+      c = 12.9352,
+      Q = sqrt(4 * c - b * b),
+      X0 = x0 * x0 + b * x0 + c;
+
+  double x = sqrt(rs), X = x * x + b * x + c;
+
+  double dx = 0.5 / x; /* Chain rule needs dx/drho! */
+
+  return dx * (
+      2 * X1 / (rs * x) + A * (
+          2. / x - (2 * x + b) / X - 4 * b / (Q * Q + (2 * x + b) * (2 * x + b))
+              - (b * x0) / X0 * (2 / (x - x0) - (2 * x + b) / X - 4 * (2 * x0 + b) /
+                  (Q * Q + (2 * x + b) * (2 * x + b)))
+      )
+  );
+}
+
+vector_1_d getVxc(vector_1_d Rho, const vector_1_d &r, const vector_1_d &dr, int N) {
+  // constant
+  double pi = std::atan(1) * 4;
+
+  // Change Rho to rs vector;
+  for (int k = 0; k <= N; ++k) {
+    // BUGFIX
+    // Creteria is Rho instead of rs (Rho too small and rs is nan)
+    if (Rho[k] < SMALL) {
+      Rho[k] = 0.0;
+    } else {
+      // change to rs
+      Rho[k] = std::pow((3.0 * r[k] * r[k]) / Rho[k], 1.0 / 3.0);
+      //  change to V_xc
+      Rho[k] = excp(Rho[k]) * (-1.0 / 3.0 * Rho[k]) + exc(Rho[k]);
+    }
+  }
+  Rho[0] = 0.0;
+
+  return Rho;
+}
+
+vector_1_d getDelta_eps_xc(vector_1_d Rho, const vector_1_d &r, const vector_1_d &dr, int N) {
+  // constant
+  double pi = std::atan(1) * 4;
+
+  for (int k = 0; k <= N; ++k) {
+    // BUGFIX
+    // Creteria is Rho instead of rs (Rho too small and rs is nan)
+    if (Rho[k] < SMALL) {
+      Rho[k] = 0.0;
+    } else {
+      // change to rs
+      Rho[k] = std::pow((3.0 * r[k] * r[k]) / Rho[k], 1.0 / 3.0);
+      //  change to Delta epsilon_xc
+      Rho[k] = excp(Rho[k]) * (1.0 / 3.0 * Rho[k]);
+    }
+  }
+  Rho[0] = 0.0;
+
+  return Rho;
+}
+
+double getExc(std::function<double(double)> exc,
+              const vector_1_d &Rho,
+              const vector_1_d &r,
+              const vector_1_d &dr,
+              int N) {
+  vector_1_d integrand(N + 1);
+  double rs;
+  for (int k = 0; k <= N; ++k) {
+    // attention !!!
+    // need to consider Rho is small
+    if (k == 0 || Rho[k] < SMALL) {
+      integrand[k] = 0.;
+    } else {
+      rs = pow(3. * r[k] * r[k] / Rho[k], 1. / 3.);
+      integrand[k] = exc(rs) * Rho[k];
+    }
+  }
+  return simpson(integrand, r, dr, N);
+}
