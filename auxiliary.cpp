@@ -4,96 +4,109 @@
 
 #include "auxiliary.h"
 
-void interpolate(vector_1_d &f, int N) {
+void interpolate(dvec_n f, int N) {
   /*
       Output:
 
-      * f[k]: values of f[] on all points
+      * f(k): values of f[] on all points
 
       Input:
 
-      * f[k]: values of f[] on even points only
+      * f(k): values of f[] on even points only
       * N: total number of points
   */
   int k;
 
   for (k = 1; k < N; k += 2) {
-    f[k] = 0.0625 * (-(k == 1 ? 0. : f[k - 3]) + 9. * (f[k - 1] + f[k + 1]) -
+    f(k) = 0.0625 * (-(k == 1 ? 0. : f[k - 3]) + 9. * (f[k - 1] + f[k + 1]) -
         (k == N - 1 ? 0. : f[k + 3]));
-    /* printf("f[%d] = %e \n",k,f[k]); debug*/
+    /* printf("f[%d] = %e \n",k,f(k)); debug*/
   }
 }
 
-vector_1_d runge_kutta_4(const vector_1_d &y, int n, double x, double h,
-                         derivs_func derivs, int k, int dk, const vector_1_d &f,
-                         const vector_1_d &r, const vector_1_d &dr, int N) {
-  vector_1_d k1(n), k2(n), k3(n), k4(n), temp_y(n);
+dvec_n runge_kutta_4(dvec_n y, int n, double x, double h,
+                     derivs_func derivs, int k, int dk, dvec_n f,
+                     dvec_n r, dvec_n dr, int N) {
+  dvec_n k1("k1", n), k2("k2", n), k3("k3", n), k4("k4", n), temp_y("temp_y", n);
   k1 = derivs(x, y, k, f, r, dr, N);
-  for (auto &iter : k1) {
-    iter *= h;
-  }
   for (int i = 0; i < n; ++i) {
-    temp_y[i] = y[i] + k1[i] / 2.0;
+    k1(i) *= h;
+  }
+//  for (auto &iter : k1) {
+//    iter *= h;
+//  }
+  for (int i = 0; i < n; ++i) {
+    temp_y(i) = y(i) + k1(i) / 2.0;
   }
 
   k2 = derivs(x + h * 0.5, temp_y, (k + dk / 2), f, r, dr, N);
-  for (auto &iter : k2) {
-    iter *= h;
+  for (int i = 0; i < n; ++i) {
+    k2(i) *= h;
   }
+//  for (auto &iter : k2) {
+//    iter *= h;
+//  }
   for (int i = 0; i < n; ++i) {
     //    BUGFIX
-    //    k2[1] -> k2[i]
-    temp_y[i] = y[i] + k2[i] / 2.0;
+    //    k2(1) -> k2(i)
+    temp_y(i) = y(i) + k2(i) / 2.0;
   }
 
   k3 = derivs(x + h * 0.5, temp_y, (k + dk / 2), f, r, dr, N);
-  for (auto &iter : k3) {
-    iter *= h;
-  }
   for (int i = 0; i < n; ++i) {
-    temp_y[i] = y[i] + k3[i];
+    k3(i) *= h;
+  }
+//  for (auto &iter : k3) {
+//    iter *= h;
+//  }
+  for (int i = 0; i < n; ++i) {
+    temp_y(i) = y(i) + k3(i);
   }
 
   k4 = derivs((x + h), temp_y, (k + dk), f, r, dr, N);
   // bugfix
   //      k3 to k4
-  for (auto &iter : k4) {
-    iter *= h;
+  for (int i = 0; i < n; ++i) {
+    k4(i) *= h;
   }
+//  for (auto &iter : k4) {
+//    iter *= h;
+//  }
 
   for (int j = 0; j < n; ++j) {
     // BUGFIX
     //        1 / 6 is wrong, 1.0 / 6.0
-    temp_y[j] = y[j] + 1.0 / 6.0 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
+    temp_y(j) = y(j) + 1.0 / 6.0 * (k1(j) + 2 * k2(j) + 2 * k3(j) + k4(j));
   }
-  //  std::cout << "temp_y in runge_kutta" << temp_y[0] << std::endl;
-  //  std::cout << "k1 in runge_kutta" << k1[0] << std::endl;
-  //  std::cout << "k2 in runge_kutta" << k2[0] << std::endl;
-  //  std::cout << "k3 in runge_kutta" << k3[0] << std::endl;
-  //  std::cout << "k4 in runge_kutta" << k4[0] << std::endl;
+  //  std::cout << "temp_y in runge_kutta" << temp_y(0) << std::endl;
+  //  std::cout << "k1 in runge_kutta" << k1(0) << std::endl;
+  //  std::cout << "k2 in runge_kutta" << k2(0) << std::endl;
+  //  std::cout << "k3 in runge_kutta" << k3(0) << std::endl;
+  //  std::cout << "k4 in runge_kutta" << k4(0) << std::endl;
   return temp_y;
 }
 
-double simpson(const vector_1_d &f, const vector_1_d &r, const vector_1_d &dr,
+double simpson(dvec_n f, dvec_n r, dvec_n dr,
                int N) {
   double simpintegral;
-  int i;
 
   /* initializing the sum */
   simpintegral = 0.;
-  for (i = 0; i < N / 2; i++) {
-    /* Not assuming regular interval; but DO assume */
-    /* the midpoint is taken for every interval*/
-    simpintegral += (f[2 * i] * dr[2 * i] + 4. * f[2 * i + 1] * dr[2 * i + 1] +
-        f[2 * i + 2] * dr[2 * i + 2]) /
+  Kokkos::parallel_reduce(Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, N / 2), KOKKOS_LAMBDA(
+                              const int i,
+                              double &lsum) {
+                            lsum += (f(2 * i) * dr(2 * i) + 4. * f(2 * i + 1) * dr(2 * i + 1) +
+                                f(2 * i + 2) * dr(2 * i + 2)) /
         6.;
-  }
+                          }, simpintegral
+  );
+
   return (simpintegral / ((double) N / 2));
 }
 
 double root_bisection(func_to_root func, double x1, double x2, double xacc,
-                      int match, const vector_1_d &V, const vector_1_d &r,
-                      const vector_1_d &dr, int N) {
+                      int match, dvec_n V, dvec_n r,
+                      dvec_n dr, int N) {
   double f_x1, f_x2, f_mid;
   int iter = 1;
   f_x1 = func(x1, match, V, r, dr, N);
@@ -140,8 +153,8 @@ double root_bisection(func_to_root func, double x1, double x2, double xacc,
 }
 
 double zriddrp480(func_to_root func, double x1, double x2, double xacc,
-                  int match, const vector_1_d &V, const vector_1_d &r,
-                  const vector_1_d &dr, int N) {
+                  int match, dvec_n V, dvec_n r,
+                  dvec_n dr, int N) {
   /*
       Return value:
 

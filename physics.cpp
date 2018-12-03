@@ -4,16 +4,16 @@
 
 #include "physics.h"
 
-double func_schrodinger(double E, int match, const vector_1_d &V,
-                        const vector_1_d &r, const vector_1_d &dr, int N) {
+double func_schrodinger(double E, int match, dvec_n V,
+                        dvec_n r, dvec_n dr, int N) {
   double Psi = 0;
   double Psip = 1;
   schint(Psi, Psip, nullptr, 0, N, V, E, r, dr, N);
   return Psi;
 }
 
-double func_schrodinger_nodes(double E, int match, const vector_1_d &V,
-                              const vector_1_d &r, const vector_1_d &dr,
+double func_schrodinger_nodes(double E, int match, dvec_n V,
+                              dvec_n r, dvec_n dr,
                               int N) {
   double Psi = 0.;
   double Psip = 1.;
@@ -23,27 +23,27 @@ double func_schrodinger_nodes(double E, int match, const vector_1_d &V,
       schint(Psi, Psip, nullptr, k1, k2, V, E, r, dr, N) - match);
 }
 
-vector_1_d derivs_schrodinger(double x, const vector_1_d &y_2, int k,
-                              const vector_1_d &T, const vector_1_d &r,
-                              const vector_1_d &dr, int N) {
-  vector_1_d dydx(2, 0.0);
-  dydx[0] = y_2[1] * dr[k];
-  dydx[1] = -2. * T[k] * y_2[0] * dr[k];
-  //  std::cout << "dr[k]" << dr[k] << std::endl;
-  //  std::cout << "T[k]" << T[k] << std::endl;
+dvec_n derivs_schrodinger(double x, dvec_n y_2, int k,
+                          dvec_n T, dvec_n r,
+                          dvec_n dr, int N) {
+  dvec_n dydx("dydx", 2);
+  dydx(0) = y_2(1) * dr(k);
+  dydx(1) = -2. * T(k) * y_2(0) * dr(k);
+  //  std::cout << "dr(k)" << dr(k) << std::endl;
+  //  std::cout << "T(k)" << T(k) << std::endl;
   //  std::cout << "k" << k << std::endl;
-  //  std::cout << "dydx[0]" << dydx[0] << std::endl;
-  //  std::cout << "dydx[1]" << dydx[1] << std::endl;
+  //  std::cout << "dydx(0)" << dydx(0) << std::endl;
+  //  std::cout << "dydx(1)" << dydx(1) << std::endl;
   return dydx;
 }
 
-int schint(double &Psi, double &Psip, vector_1_d *Psiout, int k1, int k2,
-           const vector_1_d &V, double E, const vector_1_d &r,
-           const vector_1_d &dr, int N) {
+int schint(double &Psi, double &Psip, double *Psiout, int k1, int k2,
+           dvec_n V, double E, dvec_n r,
+           dvec_n dr, int N) {
   //  • number of “nodes” (zero crossings) in solution between r[k1] and r[k2]
   //  Output:
   //  • Psi, Psip (passed by reference): values of Ψ(r[k2]) and Ψ ′ (r[k2])
-  //  • Psiout[]: Psi(r[k]) along the entire integration
+  //  • Psiout[]: Psi(r(k)) along the entire integration
   //  Input:
   //  • Psi, Psip (passed by reference): values of Ψ(r[k1]) and Ψ ′ (r[k1])
   //  • k1, k2: indices of initial and ﬁnal integration points (r[k1] → r[k2])
@@ -75,57 +75,59 @@ int schint(double &Psi, double &Psip, vector_1_d *Psiout, int k1, int k2,
   //  } else {
   //    h = -2.0 / N;
   //  }
-  vector_1_d temp_y = {Psi, Psip};
+  dvec_n temp_y("temp_y", n);
+  temp_y(0) = Psi;
+  temp_y(1) = Psip;
   double y0old;
   // construct T
-  vector_1_d T(N + 1);
+  dvec_n T("T", N + 1);
   for (int i = 0; i < N + 1; ++i) {
-    T[i] = E - V[i];
+    T(i) = E - V(i);
   }
   if (Psiout != nullptr) {
-    (*Psiout)[k1] = Psi;
+    Psiout[k1] = Psi;
   }
 
   // not use for loop, use while loop to unite this two
   int k = k1;
   while (k != k2) {
 
-    /* store y[1] for later comparing signs */
+    /* store y(1) for later comparing signs */
     x = h / 2.0 * k;
-    y0old = temp_y[0];
+    y0old = temp_y(0);
     temp_y =
         runge_kutta_4(temp_y, n, x, h, derivs_schrodinger, k, dk, T, r, dr, N);
     if (Psiout) {
-      (*Psiout)[k + dk] = temp_y[0];
+      Psiout[k + dk] = temp_y(0);
     }
-    //    std::cout << temp_y[0] << std::endl;
+    //    std::cout << temp_y(0) << std::endl;
     //    std::cout << "h" << h << std::endl;
     //    std::cout << k << std::endl;
     //    std::cout << k2 << std::endl;
     //    std::cout << k1 << "\n\n" << std::endl;
 
-    if (std::fabs(temp_y[0]) >= SQRTBIG) {
+    if (std::fabs(temp_y(0)) >= SQRTBIG) {
       if (Psiout) {
         int j = k1;
         while (j != k + 2 * dk) {
-          (*Psiout)[j] *= SMALL;
+          Psiout[j] *= SMALL;
           j += dk;
         }
       }
       y0old *= SMALL;
-      temp_y[0] *= SMALL;
-      temp_y[1] *= SMALL;
+      temp_y(0) *= SMALL;
+      temp_y(1) *= SMALL;
     }
 
-    Psi = temp_y[0];
-    Psip = temp_y[1];
+    Psi = temp_y(0);
+    Psip = temp_y(1);
 
     // calculate nodes
     // BUGFIX
     // Considering boundary condition of Psi
-    if (sgn(y0old) != sgn(temp_y[0]) && sgn(y0old) != 0) {
+    if (sgn(y0old) != sgn(temp_y(0)) && sgn(y0old) != 0) {
       //      std::cout << "y0old" << y0old << std::endl;
-      //      std::cout << "temp_y[0]" << temp_y[0] << std::endl;
+      //      std::cout << "temp_y(0)" << temp_y(0) << std::endl;
       nodes += 1;
     }
 
@@ -136,9 +138,9 @@ int schint(double &Psi, double &Psip, vector_1_d *Psiout, int k1, int k2,
   return nodes;
 }
 
-vector_1_d getEs(int nmax, double Elower, const vector_1_d &V,
-                 const vector_1_d &r, const vector_1_d &dr, int N) {
-  vector_1_d E(nmax + 1);
+dvec_n getEs(int nmax, double Elower, dvec_n V,
+             dvec_n r, dvec_n dr, int N) {
+  dvec_n E("Energy", nmax + 1);
   double E1 = Elower;
   double E2 = 0.;
   /* Loop to get states */
@@ -149,53 +151,64 @@ vector_1_d getEs(int nmax, double Elower, const vector_1_d &V,
                         N);
     /* printf("E1=%e, E2=%e\n",E1,E2); */
     /* Now, get the solution, which is in between! */
-    E[n] = zriddrp480(func_schrodinger, E1, E2, TOL, 0, V, r, dr, N);
-    /* printf("E[%d] = %e\n",n,E[n]); */
+    E(n) = zriddrp480(func_schrodinger, E1, E2, TOL, 0, V, r, dr, N);
+    /* printf("E[%d] = %e\n",n,E(n)); */
     /* forward E2 into E1 for next loop */
     E1 = E2;
   }
   return E;
 }
 
-vector_2_d getallEs(int lmax, const vector_1_i &nmax, double Z,
-                    const vector_1_d &V, const vector_1_d &r,
-                    const vector_1_d &dr, int N) {
-  vector_1_d Veff(N + 1);
+dvec_nxn getallEs(int lmax, ivec_n nmax, double Z,
+                  dvec_n V, dvec_n r,
+                  dvec_n dr, int N) {
+  dvec_n Veff("effective potential", N + 1);
+
+
+  // solve max number in nmax
+  int nmax_num = 0;
+  for (int i = 0; i <= lmax; ++i) {
+    if (nmax_num < nmax(i)) {
+      nmax_num = nmax(i);
+    }
+  }
 
   //  construct vector 2d E
-  //  attention, E is not a matrix or (a 2d tensor)
-  vector_2_d E;
+  //  attention, E is a 2d matrix
+  dvec_nxn E("Energy l n", lmax + 1, nmax_num + 1);
 
   // boundary
   for (int l = 0; l <= lmax; ++l) {
-    for (int k = 0; k <= N; k++) { /* Compute Veff */
-      Veff[k] = V[k] + l * (l + 1) / (2 * r[k] * r[k]);
-    }
-    Veff[0] = 0.; /* Mathematically proper for origin */
-    // BUGFIX
+
+    Kokkos::parallel_for(N + 1, KOKKOS_LAMBDA(const int k) {
+      Veff(k) = V(k) + l * (l + 1) / (2 * r(k) * r(k));
+    });
+    Veff(0) = 0.; /* Mathematically proper for origin */
+    // BUG FIXED
     // V is change to Veff
-    E.push_back(getEs(nmax[l], -Z * Z, Veff, r, dr, N));
+    Kokkos::deep_copy(Kokkos::subview(E, l, Kokkos::ALL()), getEs(nmax(l), -Z * Z, Veff, r, dr, N));
     // -Z * Z is the lowerset?
   }
   return E;
 }
 
-vector_1_d getPsi(double E, int l, const vector_1_d &V, const vector_1_d &r,
-                  const vector_1_d &dr, int N) {
-  vector_1_d Veff(N + 1);
-  std::unique_ptr<vector_1_d> Psi_temp = std::make_unique<vector_1_d>(N + 1);
-  vector_1_d Psiout(N + 1);
+dvec_n getPsi(double E, int l, dvec_n V, dvec_n r,
+              dvec_n dr, int N) {
+  dvec_n Veff("Effective Potential", N + 1);
+  dvec_n Psi_temp("Psi temporary", N + 1);
+  double *Psi_temp_data_ptr = Psi_temp.data(); // get the temp View ptr
+  dvec_n Psiout("Psi Function out", N + 1);
   int kmatch = 0;
   double Psi;
   double Psip;
 
   // origin point, boundary condition
-  Veff[0] = 0.0;
-  if (Veff[0] < E)
+  Veff(0) = 0.0;
+  if (Veff(0) < E)
     kmatch = 0;
   for (int k = 1; k <= N; k++) { /* Compute Veff */
-    Veff[k] = V[k] + l * (l + 1) / (2 * r[k] * r[k]);
-    if (Veff[k] < E)
+    Veff(k) = V(k) + l * (l + 1) / (2 * r(k) * r(k));
+    if (Veff(k) < E)
       kmatch = k;
   }
 
@@ -213,92 +226,99 @@ vector_1_d getPsi(double E, int l, const vector_1_d &V, const vector_1_d &r,
   // outward integration
   Psi = 0.0;
   Psip = 1.0;
-  schint(Psi, Psip, Psi_temp.get(), 0, kmatch, Veff, E, r, dr, N);
+  schint(Psi, Psip, Psi_temp_data_ptr, 0, kmatch, Veff, E, r, dr, N);
   for (int i = 0; i <= kmatch; i += 2) {
-    (*Psi_temp)[i] /= (*Psi_temp)[kmatch];
+    Psi_temp_data_ptr[i] /= Psi_temp_data_ptr[kmatch];
   }
 
   // inward integration
   Psi = 0.0;
   Psip = -1.0;
-  schint(Psi, Psip, Psi_temp.get(), N, kmatch, Veff, E, r, dr, N);
+  schint(Psi, Psip, Psi_temp_data_ptr, N, kmatch, Veff, E, r, dr, N);
   for (int i = N; i >= kmatch; i -= 2) {
-    (*Psi_temp)[i] /= (*Psi_temp)[kmatch];
+    Psi_temp_data_ptr[i] /= Psi_temp_data_ptr[kmatch];
   }
 
   // interpolate
-  interpolate((*Psi_temp), N);
+  interpolate(Psi_temp, N);
 
   // copy transformation  ??
-  Psiout = *Psi_temp;
+//  Psiout = *Psi_temp;
+  Kokkos::deep_copy(Psiout, Psi_temp);
 
   // do normalization
-  for (auto &psi : (*Psi_temp)) {
-    psi = psi * psi;
-  }
-  double norm = std::sqrt(simpson(*Psi_temp, r, dr, N));
-  for (auto &psi : Psiout) {
-    psi = psi / norm;
-  }
+  Kokkos::parallel_for(N + 1, KOKKOS_LAMBDA(const int i) {
+    Psi_temp(i) = Psi_temp(i) * Psi_temp(i);
+  });
+  double norm = std::sqrt(simpson(Psi_temp, r, dr, N));
+  Kokkos::parallel_for(N + 1, KOKKOS_LAMBDA(const int i) {
+    Psiout(i) = Psiout(i) / norm;
+  });
 
   return Psiout;
 }
 
-vector_3_d getallPsi(const vector_2_d &E, int lmax, vector_1_i nmax,
-                     const vector_1_d &V, const vector_1_d &r,
-                     const vector_1_d &dr, int N) {
-  std::unique_ptr<vector_2_d> Psi_l;
-  vector_3_d Psiall(lmax + 1);
-  for (int l = 0; l <= lmax; l++) {
-    Psi_l.reset();
-    Psi_l = std::make_unique<vector_2_d>(nmax[l] + 1);
-    for (int n = 0; n <= nmax[l]; n++) {
-      (*Psi_l)[n] = (getPsi(E[l][n], l, V, r, dr, N));
+dvec_nxnxn getallPsi(dvec_nxn E, int lmax, ivec_n nmax,
+                     dvec_n V, dvec_n r,
+                     dvec_n dr, int N) {
+  // solve max number in nmax
+  int nmax_num = 0;
+  for (int i = 0; i <= lmax; ++i) {
+    if (nmax_num < nmax(i)) {
+      nmax_num = nmax(i);
     }
-    Psiall[l] = std::move(*Psi_l);
+  }
+
+  dvec_nxn Psi_l;
+  // ATTENTION: the Psiall definition is N * l * n, for Kokkos parallel efficient
+  dvec_nxnxn Psiall("Psiall 3 dimension", N, lmax + 1, nmax_num + 1);
+
+  for (int l = 0; l <= lmax; l++) {
+    for (int n = 0; n <= nmax(l); n++) {
+      Kokkos::deep_copy(Kokkos::subview(Psiall, Kokkos::ALL, l, n), getPsi(E(l, n), l, V, r, dr, N));
+    }
   }
   return Psiall;
 }
 
-vector_1_d getRho(const vector_3_d &Psi, const vector_2_d &F, int lmax,
-                  const vector_1_i &nmax, int N) {
-  vector_1_d Rho(N + 1, 0.0);
-  for (int l = 0; l <= lmax; ++l) {
-    for (int n = 0; n <= nmax[l]; ++n) {
-      for (int k = 0; k <= N; ++k) {
-        Rho[k] += F[l][n] * Psi[l][n][k] * Psi[l][n][k];
+dvec_n getRho(dvec_nxnxn Psi, dvec_nxn F, int lmax,
+              ivec_n nmax, int N) {
+  dvec_n Rho("Rho density", N + 1);
+  Kokkos::parallel_for(N + 1, KOKKOS_LAMBDA(const int k) {
+    for (int l = 0; l <= lmax; ++l) {
+      for (int n = 0; n <= nmax(l); ++n) {
+        Rho(k) += F(l, n) * Psi(k, l, n) * Psi(k, l, n);
       }
     }
-  }
+  });
   return Rho;
 }
 
-vector_1_d derivs_Poisson(double x, const vector_1_d &y, int k,
-                          const vector_1_d &Rho, const vector_1_d &r,
-                          const vector_1_d &dr, int N) {
-  vector_1_d dydx(2);
-  dydx[0] = y[1] * dr[k];
-  dydx[1] = -Rho[k] / r[k] * dr[k];
+dvec_n derivs_Poisson(double x, dvec_n y, int k,
+                      dvec_n Rho, dvec_n r,
+                      dvec_n dr, int N) {
+  dvec_n dydx("dydx", 2);
+  dydx(0) = y(1) * dr(k);
+  dydx(1) = -Rho(k) / r(k) * dr(k);
   return dydx;
 }
 
-vector_1_d getphi(vector_1_d &Rho, const vector_1_d &r, const vector_1_d &dr,
-                  int N) {
+dvec_n getphi(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
   /*
       Output:
 
-      * phi[k]: electrostatic potential phi(r) on the grid
+      * phi(k): electrostatic potential phi(r) on the grid
 
       Input:
 
-      * Rho[k]: 4 pi r^2 n(r[k]) for all grid points r[k]
+      * Rho(k): 4 pi r^2 n(r(k)) for all grid points r(k)
       * r[], dr[], N: standard grid information
   */
 
   int n = 2;
-  vector_1_d y(n), dydx; /* NR vector for diff eq's */
-  vector_1_d Phi(N + 1); /* NR vector Phi = r*phi */
-  vector_1_d phi(N + 1);
+  dvec_n y("y", n); /* NR vector for diff eq's */
+  dvec_n Phi("Phi", N + 1); /* NR vector Phi = r*phi */
+  dvec_n phi("phi", N + 1);
   double x, h;
 
   /* Allocate NR vectors for maximum size used */
@@ -308,24 +328,23 @@ vector_1_d getphi(vector_1_d &Rho, const vector_1_d &r, const vector_1_d &dr,
 
   h = -2. / ((double) N);
   int dk = -2;
-  y[1] = 0.;
-  y[0] =
-      simpson(Rho, r, dr, N); /* integrate density to give the number of e's*/
+  y(1) = 0.;
+  y(0) = simpson(Rho, r, dr, N); /* integrate density to give the number of e's*/
 
   assert(dk <= 0);
   // initial condition is at the boundry
-  Phi[N] = y[0];
+  Phi(N) = y(0);
 
   for (int k = N; k >= int(std::fabs(dk)); k += dk) {
     // electron number
-    /*  printf(" Phi[%d]= %e \n",N, Phi[N]); debug*/
+    /*  printf(" Phi[%d]= %e \n",N, Phi(N)); debug*/
     // TODO
     // increase from negative x?
     x = ((double) k) / 2. * h;
     y = runge_kutta_4(y, n, x, h, derivs_Poisson, k, dk, Rho, r, dr, N);
     //    dydx = derivs_Poisson(x, y, k, Rho, r, dr, N);
 
-    Phi[k + dk] = y[0];
+    Phi(k + dk) = y(0);
     /* printf(" Phi[%d]= %e \n",k+dk, Phi[k+dk]); debug*/
   } /* end looping over k*/
 
@@ -333,10 +352,10 @@ vector_1_d getphi(vector_1_d &Rho, const vector_1_d &r, const vector_1_d &dr,
   interpolate(Phi, N);
 
   for (int k = 0; k <= N; k++) {
-    phi[k] = Phi[k] / r[k];
+    phi(k) = Phi(k) / r(k);
   }
   // boundary condition 0
-  phi[0] = 0.;
+  phi(0) = 0.;
   return phi;
 }
 
@@ -465,7 +484,7 @@ double excp(double rs) {
   );
 }
 
-vector_1_d getVxc(vector_1_d Rho, const vector_1_d &r, const vector_1_d &dr, int N) {
+dvec_n getVxc(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
   // constant
   double pi = std::atan(1) * 4;
 
@@ -473,56 +492,56 @@ vector_1_d getVxc(vector_1_d Rho, const vector_1_d &r, const vector_1_d &dr, int
   for (int k = 0; k <= N; ++k) {
     // BUGFIX
     // Creteria is Rho instead of rs (Rho too small and rs is nan)
-    if (Rho[k] < SMALL) {
-      Rho[k] = 0.0;
+    if (Rho(k) < SMALL) {
+      Rho(k) = 0.0;
     } else {
       // change to rs
-      Rho[k] = std::pow((3.0 * r[k] * r[k]) / Rho[k], 1.0 / 3.0);
+      Rho(k) = std::pow((3.0 * r(k) * r(k)) / Rho(k), 1.0 / 3.0);
       //  change to V_xc
-      Rho[k] = excp(Rho[k]) * (-1.0 / 3.0 * Rho[k]) + exc(Rho[k]);
+      Rho(k) = excp(Rho(k)) * (-1.0 / 3.0 * Rho(k)) + exc(Rho(k));
     }
   }
-  Rho[0] = 0.0;
+  Rho(0) = 0.0;
 
   return Rho;
 }
 
-vector_1_d getDelta_eps_xc(vector_1_d Rho, const vector_1_d &r, const vector_1_d &dr, int N) {
+dvec_n getDelta_eps_xc(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
   // constant
   double pi = std::atan(1) * 4;
 
   for (int k = 0; k <= N; ++k) {
     // BUGFIX
     // Creteria is Rho instead of rs (Rho too small and rs is nan)
-    if (Rho[k] < SMALL) {
-      Rho[k] = 0.0;
+    if (Rho(k) < SMALL) {
+      Rho(k) = 0.0;
     } else {
       // change to rs
-      Rho[k] = std::pow((3.0 * r[k] * r[k]) / Rho[k], 1.0 / 3.0);
+      Rho(k) = std::pow((3.0 * r(k) * r(k)) / Rho(k), 1.0 / 3.0);
       //  change to Delta epsilon_xc
-      Rho[k] = excp(Rho[k]) * (1.0 / 3.0 * Rho[k]);
+      Rho(k) = excp(Rho(k)) * (1.0 / 3.0 * Rho(k));
     }
   }
-  Rho[0] = 0.0;
+  Rho(0) = 0.0;
 
   return Rho;
 }
 
 double getExc(std::function<double(double)> exc,
-              const vector_1_d &Rho,
-              const vector_1_d &r,
-              const vector_1_d &dr,
+              dvec_n Rho,
+              dvec_n r,
+              dvec_n dr,
               int N) {
-  vector_1_d integrand(N + 1);
+  dvec_n integrand("integrand", N + 1);
   double rs;
   for (int k = 0; k <= N; ++k) {
     // attention !!!
     // need to consider Rho is small
-    if (k == 0 || Rho[k] < SMALL) {
-      integrand[k] = 0.;
+    if (k == 0 || Rho(k) < SMALL) {
+      integrand(k) = 0.;
     } else {
-      rs = pow(3. * r[k] * r[k] / Rho[k], 1. / 3.);
-      integrand[k] = exc(rs) * Rho[k];
+      rs = pow(3. * r(k) * r(k) / Rho(k), 1. / 3.);
+      integrand(k) = exc(rs) * Rho(k);
     }
   }
   return simpson(integrand, r, dr, N);
