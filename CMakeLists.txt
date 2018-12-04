@@ -44,6 +44,7 @@ option(PACKAGE_TESTS "Build the tests" ON)
 if (PACKAGE_TESTS)
     enable_testing()
     add_subdirectory(${PROJECT_SOURCE_DIR}/googletest)
+    include_directories(${PROJECT_SOURCE_DIR}/googletest/googletest/include)
 endif ()
 
 ################################

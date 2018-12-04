@@ -147,14 +147,18 @@ dvec_n getEs(int nmax, double Elower, dvec_n V,
   for (int n = 0; n <= nmax; n++) {
 
     /* Get E2 as an energy with n+1 nodes */
+    std::cout << "E2 before update" << E2 << std::endl;
     E2 = root_bisection(func_schrodinger_nodes, E1, 0.0, TOL, n + 1, V, r, dr,
                         N);
+    std::cout << "E2 after update" << E2 << std::endl;
     /* printf("E1=%e, E2=%e\n",E1,E2); */
     /* Now, get the solution, which is in between! */
     E(n) = zriddrp480(func_schrodinger, E1, E2, TOL, 0, V, r, dr, N);
+    std::cout << "E(n) calculate" << E(n) << std::endl;
     /* printf("E[%d] = %e\n",n,E(n)); */
     /* forward E2 into E1 for next loop */
     E1 = E2;
+    std::cout << "E1 after zriddrp480" << E2 << std::endl;
   }
   return E;
 }
@@ -176,6 +180,7 @@ dvec_nxn getallEs(int lmax, ivec_n nmax, double Z,
   //  construct vector 2d E
   //  attention, E is a 2d matrix
   dvec_nxn E("Energy l n", lmax + 1, nmax_num + 1);
+  dvec_n temp_Es;
 
   // boundary
   for (int l = 0; l <= lmax; ++l) {
@@ -186,7 +191,8 @@ dvec_nxn getallEs(int lmax, ivec_n nmax, double Z,
     Veff(0) = 0.; /* Mathematically proper for origin */
     // BUG FIXED
     // V is change to Veff
-    Kokkos::deep_copy(Kokkos::subview(E, l, Kokkos::ALL()), getEs(nmax(l), -Z * Z, Veff, r, dr, N));
+    temp_Es = getEs(nmax(l), -Z * Z, Veff, r, dr, N);
+    Kokkos::deep_copy(Kokkos::subview(E, l, Kokkos::ALL()), temp_Es);
     // -Z * Z is the lowerset?
   }
   return E;
@@ -213,7 +219,7 @@ dvec_n getPsi(double E, int l, dvec_n V, dvec_n r,
   }
 
   // BUGFIX
-  // kmatch has to be even
+  // kmatch haskmatch to be even
   // choose the nearest even number
   if (kmatch % 2 != 0) {
     kmatch -= 1;
@@ -269,13 +275,14 @@ dvec_nxnxn getallPsi(dvec_nxn E, int lmax, ivec_n nmax,
     }
   }
 
-  dvec_nxn Psi_l;
+  dvec_n Psi_temp;
   // ATTENTION: the Psiall definition is N * l * n, for Kokkos parallel efficient
-  dvec_nxnxn Psiall("Psiall 3 dimension", N, lmax + 1, nmax_num + 1);
+  dvec_nxnxn Psiall("Psiall 3 dimension", N + 1, lmax + 1, nmax_num + 1);
 
   for (int l = 0; l <= lmax; l++) {
     for (int n = 0; n <= nmax(l); n++) {
-      Kokkos::deep_copy(Kokkos::subview(Psiall, Kokkos::ALL, l, n), getPsi(E(l, n), l, V, r, dr, N));
+      Psi_temp = getPsi(E(l, n), l, V, r, dr, N);
+      Kokkos::deep_copy(Kokkos::subview(Psiall, Kokkos::ALL(), l, n), Psi_temp);
     }
   }
   return Psiall;
@@ -284,6 +291,8 @@ dvec_nxnxn getallPsi(dvec_nxn E, int lmax, ivec_n nmax,
 dvec_n getRho(dvec_nxnxn Psi, dvec_nxn F, int lmax,
               ivec_n nmax, int N) {
   dvec_n Rho("Rho density", N + 1);
+  printf("lmax %d\n", lmax);
+  printf("nmax(0) %d\n", nmax(0));
   Kokkos::parallel_for(N + 1, KOKKOS_LAMBDA(const int k) {
     for (int l = 0; l <= lmax; ++l) {
       for (int n = 0; n <= nmax(l); ++n) {
@@ -488,43 +497,52 @@ dvec_n getVxc(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
   // constant
   double pi = std::atan(1) * 4;
 
+  // BUG FIXED
+  // need create a new Vxc vector
+  dvec_n Vxc("Vxc", N + 1);
+  Kokkos::deep_copy(Vxc, Rho);
+
   // Change Rho to rs vector;
   for (int k = 0; k <= N; ++k) {
     // BUGFIX
     // Creteria is Rho instead of rs (Rho too small and rs is nan)
-    if (Rho(k) < SMALL) {
-      Rho(k) = 0.0;
+    if (Vxc(k) < SMALL) {
+      Vxc(k) = 0.0;
     } else {
       // change to rs
-      Rho(k) = std::pow((3.0 * r(k) * r(k)) / Rho(k), 1.0 / 3.0);
+      Vxc(k) = std::pow((3.0 * r(k) * r(k)) / Vxc(k), 1.0 / 3.0);
       //  change to V_xc
-      Rho(k) = excp(Rho(k)) * (-1.0 / 3.0 * Rho(k)) + exc(Rho(k));
+      Vxc(k) = excp(Vxc(k)) * (-1.0 / 3.0 * Vxc(k)) + exc(Vxc(k));
     }
   }
-  Rho(0) = 0.0;
+  Vxc(0) = 0.0;
 
-  return Rho;
+  return Vxc;
 }
 
 dvec_n getDelta_eps_xc(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
   // constant
   double pi = std::atan(1) * 4;
+  // BUG FIXED
+  // need create a new Vxc vector
+  dvec_n Delta_eps_xc("Delta_eps_xc", N + 1);
+  Kokkos::deep_copy(Delta_eps_xc, Rho);
 
   for (int k = 0; k <= N; ++k) {
     // BUGFIX
     // Creteria is Rho instead of rs (Rho too small and rs is nan)
-    if (Rho(k) < SMALL) {
-      Rho(k) = 0.0;
+    if (Delta_eps_xc(k) < SMALL) {
+      Delta_eps_xc(k) = 0.0;
     } else {
       // change to rs
-      Rho(k) = std::pow((3.0 * r(k) * r(k)) / Rho(k), 1.0 / 3.0);
+      Delta_eps_xc(k) = std::pow((3.0 * r(k) * r(k)) / Delta_eps_xc(k), 1.0 / 3.0);
       //  change to Delta epsilon_xc
-      Rho(k) = excp(Rho(k)) * (1.0 / 3.0 * Rho(k));
+      Delta_eps_xc(k) = excp(Delta_eps_xc(k)) * (1.0 / 3.0 * Delta_eps_xc(k));
     }
   }
-  Rho(0) = 0.0;
+  Delta_eps_xc(0) = 0.0;
 
-  return Rho;
+  return Delta_eps_xc;
 }
 
 double getExc(std::function<double(double)> exc,

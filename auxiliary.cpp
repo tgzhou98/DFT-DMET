@@ -97,7 +97,7 @@ double simpson(dvec_n f, dvec_n r, dvec_n dr,
                               double &lsum) {
                             lsum += (f(2 * i) * dr(2 * i) + 4. * f(2 * i + 1) * dr(2 * i + 1) +
                                 f(2 * i + 2) * dr(2 * i + 2)) /
-        6.;
+                                6.;
                           }, simpintegral
   );
 
@@ -107,49 +107,33 @@ double simpson(dvec_n f, dvec_n r, dvec_n dr,
 double root_bisection(func_to_root func, double x1, double x2, double xacc,
                       int match, dvec_n V, dvec_n r,
                       dvec_n dr, int N) {
-  double f_x1, f_x2, f_mid;
-  int iter = 1;
-  f_x1 = func(x1, match, V, r, dr, N);
-  //  std::cout << "iteration " << iter << "and function value f_x1 is " << f_x1
-  //  << std::endl;
-  if (f_x1 == 0.0) {
+  int j = 0;
+  double dx, f, fmid, xmid, rtb;
+
+  f = func(x1, match, V, r, dr, N);
+  if (f == 0.0) {
     return x1;
   }
-  f_x2 = func(x2, match, V, r, dr, N);
-  //  std::cout << "iteration " << iter << "and function value f_x2 is " << f_x2
-  //  << std::endl;
-  if (f_x2 == 0.0) {
+  fmid = func(x2, match, V, r, dr, N);
+  if (fmid == 0.0) {
     return x2;
   }
-  if (sgn(f_x1) == sgn(f_x2)) {
-    std::cerr << "iteration " << iter << "has no root" << std::endl;
-    // resource will be released in C++
-    exit(1);
-  }
-  double sign = double(sgn(f_x2 - f_x1));
-  while (std::fabs(x2 - x1) >= xacc) {
-    f_mid = func(((x1 + x2) / 2.0), match, V, r, dr, N);
-    std::cout << "iteration " << iter << "and function value f_mid is " << f_mid
-              << std::endl;
-    if (f_mid * sign > 0.0) {
-      x2 = (x1 + x2) / 2.0;
-    } else if (f_mid * sign < 0.0) {
-      x1 = (x1 + x2) / 2.0;
-    } else {
-      return (x1 + x2) / 2;
-    }
-    //    std::cout << "iteration " << iter << "and function value f_mid is " <<
-    //    f_mid << std::endl; std::cout << "iteration " << iter << "and x1 is"
-    //    << x1 << std::endl; std::cout << "iteration " << iter << "and x2 is"
-    //    << x2 << std::endl;
-    iter++;
 
-    if (iter >= ITER_MAX) {
-      std::cerr << "iteration " << iter << "  too many iteration" << std::endl;
-      exit(1);
+  if (f * fmid > 0.0) std::cerr << ("Root must be bracketed for bisection in rtbis") << std::endl;
+  rtb = f < 0.0 ? (dx = x2 - x1, x1) : (dx = x1 - x2, x2);
+  for (j = 1; j <= ITER_MAX; j++) {
+    printf("rtb %f\n", rtb);
+    fmid = func(xmid = rtb + (dx *= 0.5), match, V, r, dr, N);
+    // dx change 0.5 every time
+    printf("   (%d iterations in rtbisp480, func=%e)\n", j, fmid);
+    if (fmid <= 0.0) rtb = xmid;
+    if (fabs(dx) < xacc || fmid == 0.0) {
+      printf("   (%d iterations in rtbisp480, func=%e)\n", j, fmid);
+      return (rtb);
     }
   }
-  return x1;
+  std::cerr << "Too many bisections in rtbis!\n";
+  return 0.0;
 }
 
 double zriddrp480(func_to_root func, double x1, double x2, double xacc,

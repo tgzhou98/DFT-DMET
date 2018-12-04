@@ -1,7 +1,7 @@
 #include "auxiliary.h"
 #include "physics.h"
 #include "DMC.h"
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 //
 // using namespace boost::numeric::odeint;
 

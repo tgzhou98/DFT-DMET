@@ -29,7 +29,7 @@ typedef std::function<double(double, int, dvec_n,
 /* TOL is the error tolerance in E found by auto Sch. solver */
 #define TOL (1.e-12)
 #define PSIP_INIT (1.e-20)
-#define ITER_MAX 100
+#define ITER_MAX 40
 #define MAXIT 120
 
 /* constants for preventing overflow problem */
