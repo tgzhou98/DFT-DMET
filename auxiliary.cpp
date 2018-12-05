@@ -24,10 +24,10 @@ void interpolate(dvec_n f, int N) {
   }
 }
 
-dvec_n runge_kutta_4(dvec_n y, int n, double x, double h,
+dvec_2 runge_kutta_4(dvec_2 y, int n, double x, double h,
                      derivs_func derivs, int k, int dk, dvec_n f,
-                     dvec_n r, dvec_n dr, int N) {
-  dvec_n k1("k1", n), k2("k2", n), k3("k3", n), k4("k4", n), temp_y("temp_y", n);
+                     const dvec_n &r, const dvec_n &dr, int N) {
+  dvec_2 k1("k1"), k2("k2"), k3("k3"), k4("k4"), temp_y("temp_y");
   k1 = derivs(x, y, k, f, r, dr, N);
   for (int i = 0; i < n; ++i) {
     k1(i) *= h;
@@ -86,7 +86,7 @@ dvec_n runge_kutta_4(dvec_n y, int n, double x, double h,
   return temp_y;
 }
 
-double simpson(dvec_n f, dvec_n r, dvec_n dr,
+double simpson(dvec_n f, const dvec_n &r, const dvec_n &dr,
                int N) {
   double simpintegral;
 
@@ -105,8 +105,8 @@ double simpson(dvec_n f, dvec_n r, dvec_n dr,
 }
 
 double root_bisection(func_to_root func, double x1, double x2, double xacc,
-                      int match, dvec_n V, dvec_n r,
-                      dvec_n dr, int N) {
+                      int match, const dvec_n &V, const dvec_n &r,
+                      const dvec_n &dr, int N) {
   int j = 0;
   double dx, f, fmid, xmid, rtb;
 
@@ -119,26 +119,27 @@ double root_bisection(func_to_root func, double x1, double x2, double xacc,
     return x2;
   }
 
-  if (f * fmid > 0.0) std::cerr << ("Root must be bracketed for bisection in rtbis") << std::endl;
+  if (f * fmid > 0.0)
+    fprintf(stderr, "Root must be bracketed for bisection in rtbis\n");
   rtb = f < 0.0 ? (dx = x2 - x1, x1) : (dx = x1 - x2, x2);
   for (j = 1; j <= ITER_MAX; j++) {
-    printf("rtb %f\n", rtb);
+//    printf("rtb %f\n", rtb);
     fmid = func(xmid = rtb + (dx *= 0.5), match, V, r, dr, N);
     // dx change 0.5 every time
-    printf("   (%d iterations in rtbisp480, func=%e)\n", j, fmid);
+//    printf("   (%d iterations in rtbisp480, func=%e)\n", j, fmid);
     if (fmid <= 0.0) rtb = xmid;
     if (fabs(dx) < xacc || fmid == 0.0) {
       printf("   (%d iterations in rtbisp480, func=%e)\n", j, fmid);
       return (rtb);
     }
   }
-  std::cerr << "Too many bisections in rtbis!\n";
+  fprintf(stderr, "Too many bisections in rtbis!\n");
   return 0.0;
 }
 
 double zriddrp480(func_to_root func, double x1, double x2, double xacc,
-                  int match, dvec_n V, dvec_n r,
-                  dvec_n dr, int N) {
+                  int match, const dvec_n &V, const dvec_n &r,
+                  const dvec_n &dr, int N) {
   /*
       Return value:
 
@@ -194,13 +195,13 @@ double zriddrp480(func_to_root func, double x1, double x2, double xacc,
         xl = ans;
         fl = fnew;
       } else
-        std::cerr << "never get here." << std::endl;
+        fprintf(stderr, "never get here.");
       if (fabs(xh - xl) <= xacc) {
         printf("   (%d iterations in zriddp480, func=%e)\n", j, fnew);
         return ans;
       }
     }
-    std::cerr << "zriddr exceed maximum iterations" << std::endl;
+    fprintf(stderr, "zriddr exceed maximum iterations");
   } else {
     if (fl == 0.0) {
       printf("   (%d iterations in zriddp480, func=%e)\n", j, fl);
@@ -211,7 +212,7 @@ double zriddrp480(func_to_root func, double x1, double x2, double xacc,
       return x2;
     }
 
-    std::cerr << "root must be bracketed in zriddr." << std::endl;
+    fprintf(stderr, "root must be bracketed in zriddr.");
   }
   return 0.0;
 }

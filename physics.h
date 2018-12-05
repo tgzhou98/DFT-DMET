@@ -6,40 +6,40 @@
 #define DFT_PHYSICS_H
 #include "auxiliary.h"
 
-double func_schrodinger(double E, int match, dvec_n V,
-                        dvec_n r, dvec_n dr, int N);
+double func_schrodinger(double E, int match, const dvec_n &V,
+                        const dvec_n &r, const dvec_n &dr, int N);
 
-double func_schrodinger_nodes(double E, int match, dvec_n V,
-                              dvec_n r, dvec_n dr, int N);
+double func_schrodinger_nodes(double E, int match, const dvec_n &V,
+                              const dvec_n &r, const dvec_n &dr, int N);
 
-dvec_n derivs_schrodinger(double x, dvec_n y_2, int k,
-                          dvec_n T, dvec_n r,
-                          dvec_n dr, int N);
+dvec_2 derivs_schrodinger(double x, dvec_2 y_2, int k,
+                          dvec_n T, const dvec_n &r,
+                          const dvec_n &dr, int N);
+
+dvec_2 derivs_Poisson(double x, dvec_2 y, int k,
+                      const dvec_n &Rho, const dvec_n &r,
+                      const dvec_n &dr, int N);
 
 int schint(double &Psi, double &Psip, double *Psiout, int k1, int k2,
-           dvec_n V, double E, dvec_n r,
-           dvec_n dr, int N);
+           const dvec_n &V, double E, const dvec_n &r,
+           const dvec_n &dr, int N);
 
-dvec_n getEs(int nmax, double Elower, dvec_n V,
-             dvec_n r, dvec_n dr, int N);
+dvec_n getEs(int nmax, double Elower, const dvec_n &V,
+             const dvec_n &r, const dvec_n &dr, int N);
 
 dvec_nxn getallEs(int lmax, ivec_n nmax, double Z,
-                  dvec_n V, dvec_n r,
-                  dvec_n dr, int N);
+                  const dvec_n &V, const dvec_n &r,
+                  const dvec_n &dr, int N);
 
-dvec_n getPsi(double E, int l, dvec_n V, dvec_n r,
-              dvec_n dr, int N);
+dvec_n getPsi(double E, int l, const dvec_n &V, const dvec_n &r,
+              const dvec_n &dr, int N);
 
-dvec_n derivs_Poisson(double x, dvec_n y, int k,
-                      dvec_n Rho, dvec_n r,
-                      dvec_n dr, int N);
-
-dvec_n getphi(dvec_n Rho, dvec_n r, dvec_n dr,
+dvec_n getphi(const dvec_n &Rho, const dvec_n &r, const dvec_n &dr,
               int N);
 
 dvec_nxnxn getallPsi(dvec_nxn E, int lmax, ivec_n nmax,
-                     dvec_n V, dvec_n r,
-                     dvec_n dr, int N);
+                     const dvec_n &V, const dvec_n &r,
+                     const dvec_n &dr, int N);
 
 dvec_n getRho(dvec_nxnxn Psi, dvec_nxn F, int lmax,
               ivec_n nmax, int N);
@@ -52,14 +52,14 @@ double exc(double rs);
 
 double excp(double rs);
 
-dvec_n getVxc(dvec_n Rho, dvec_n r, dvec_n dr, int N);
+dvec_n getVxc(const dvec_n &Rho, const dvec_n &r, const dvec_n &dr, int N);
 
-dvec_n getDelta_eps_xc(dvec_n Rho, dvec_n r, dvec_n dr, int N);
+dvec_n getDelta_eps_xc(const dvec_n &Rho, const dvec_n &r, const dvec_n &dr, int N);
 
 double getExc(std::function<double(double)> exc,
-              dvec_n Rho,
-              dvec_n r,
-              dvec_n dr,
+              const dvec_n &Rho,
+              const dvec_n &r,
+              const dvec_n &dr,
               int N);
 
 #endif // DFT_PHYSICS_H

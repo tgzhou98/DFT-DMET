@@ -4,16 +4,16 @@
 
 #include "physics.h"
 
-double func_schrodinger(double E, int match, dvec_n V,
-                        dvec_n r, dvec_n dr, int N) {
+double func_schrodinger(double E, int match, const dvec_n &V,
+                        const dvec_n &r, const dvec_n &dr, int N) {
   double Psi = 0;
   double Psip = 1;
   schint(Psi, Psip, nullptr, 0, N, V, E, r, dr, N);
   return Psi;
 }
 
-double func_schrodinger_nodes(double E, int match, dvec_n V,
-                              dvec_n r, dvec_n dr,
+double func_schrodinger_nodes(double E, int match, const dvec_n &V,
+                              const dvec_n &r, const dvec_n &dr,
                               int N) {
   double Psi = 0.;
   double Psip = 1.;
@@ -23,10 +23,10 @@ double func_schrodinger_nodes(double E, int match, dvec_n V,
       schint(Psi, Psip, nullptr, k1, k2, V, E, r, dr, N) - match);
 }
 
-dvec_n derivs_schrodinger(double x, dvec_n y_2, int k,
-                          dvec_n T, dvec_n r,
-                          dvec_n dr, int N) {
-  dvec_n dydx("dydx", 2);
+dvec_2 derivs_schrodinger(double x, dvec_2 y_2, int k,
+                          dvec_n T, const dvec_n &r,
+                          const dvec_n &dr, int N) {
+  dvec_2 dydx("dydx");
   dydx(0) = y_2(1) * dr(k);
   dydx(1) = -2. * T(k) * y_2(0) * dr(k);
   //  std::cout << "dr(k)" << dr(k) << std::endl;
@@ -38,8 +38,8 @@ dvec_n derivs_schrodinger(double x, dvec_n y_2, int k,
 }
 
 int schint(double &Psi, double &Psip, double *Psiout, int k1, int k2,
-           dvec_n V, double E, dvec_n r,
-           dvec_n dr, int N) {
+           const dvec_n &V, double E, const dvec_n &r,
+           const dvec_n &dr, int N) {
   //  • number of “nodes” (zero crossings) in solution between r[k1] and r[k2]
   //  Output:
   //  • Psi, Psip (passed by reference): values of Ψ(r[k2]) and Ψ ′ (r[k2])
@@ -138,35 +138,35 @@ int schint(double &Psi, double &Psip, double *Psiout, int k1, int k2,
   return nodes;
 }
 
-dvec_n getEs(int nmax, double Elower, dvec_n V,
-             dvec_n r, dvec_n dr, int N) {
-  dvec_n E("Energy", nmax + 1);
+dvec_n getEs(int nmax, double Elower, const dvec_n &V,
+             const dvec_n &r, const dvec_n &dr, int N) {
+  dvec_n E("E", nmax + 1);
   double E1 = Elower;
   double E2 = 0.;
   /* Loop to get states */
   for (int n = 0; n <= nmax; n++) {
 
     /* Get E2 as an energy with n+1 nodes */
-    std::cout << "E2 before update" << E2 << std::endl;
+    // std::cout << "E2 before update" << E2 << std::endl;
     E2 = root_bisection(func_schrodinger_nodes, E1, 0.0, TOL, n + 1, V, r, dr,
                         N);
-    std::cout << "E2 after update" << E2 << std::endl;
+    // std::cout << "E2 after update" << E2 << std::endl;
     /* printf("E1=%e, E2=%e\n",E1,E2); */
     /* Now, get the solution, which is in between! */
     E(n) = zriddrp480(func_schrodinger, E1, E2, TOL, 0, V, r, dr, N);
-    std::cout << "E(n) calculate" << E(n) << std::endl;
+    // std::cout << "E(n) calculate" << E(n) << std::endl;
     /* printf("E[%d] = %e\n",n,E(n)); */
     /* forward E2 into E1 for next loop */
     E1 = E2;
-    std::cout << "E1 after zriddrp480" << E2 << std::endl;
+    // std::cout << "E1 after zriddrp480" << E2 << std::endl;
   }
   return E;
 }
 
 dvec_nxn getallEs(int lmax, ivec_n nmax, double Z,
-                  dvec_n V, dvec_n r,
-                  dvec_n dr, int N) {
-  dvec_n Veff("effective potential", N + 1);
+                  const dvec_n &V, const dvec_n &r,
+                  const dvec_n &dr, int N) {
+  dvec_n Veff("eff", N + 1);
 
 
   // solve max number in nmax
@@ -179,7 +179,7 @@ dvec_nxn getallEs(int lmax, ivec_n nmax, double Z,
 
   //  construct vector 2d E
   //  attention, E is a 2d matrix
-  dvec_nxn E("Energy l n", lmax + 1, nmax_num + 1);
+  dvec_nxn E("E", lmax + 1, nmax_num + 1);
   dvec_n temp_Es;
 
   // boundary
@@ -198,12 +198,12 @@ dvec_nxn getallEs(int lmax, ivec_n nmax, double Z,
   return E;
 }
 
-dvec_n getPsi(double E, int l, dvec_n V, dvec_n r,
-              dvec_n dr, int N) {
-  dvec_n Veff("Effective Potential", N + 1);
-  dvec_n Psi_temp("Psi temporary", N + 1);
+dvec_n getPsi(double E, int l, const dvec_n &V, const dvec_n &r,
+              const dvec_n &dr, int N) {
+  dvec_n Veff("Veff", N + 1);
+  dvec_n Psi_temp("Psi_temp", N + 1);
   double *Psi_temp_data_ptr = Psi_temp.data(); // get the temp View ptr
-  dvec_n Psiout("Psi Function out", N + 1);
+  dvec_n Psiout("Psi", N + 1);
   int kmatch = 0;
   double Psi;
   double Psip;
@@ -225,7 +225,7 @@ dvec_n getPsi(double E, int l, dvec_n V, dvec_n r,
     kmatch -= 1;
   }
   if (kmatch == 0) {
-    std::cout << "Veff never below E=" << E << " in getPsi." << std::endl;
+    // std::cout << "Veff never below E=" << E << " in getPsi." << std::endl;
     exit(1);
   }
 
@@ -265,8 +265,8 @@ dvec_n getPsi(double E, int l, dvec_n V, dvec_n r,
 }
 
 dvec_nxnxn getallPsi(dvec_nxn E, int lmax, ivec_n nmax,
-                     dvec_n V, dvec_n r,
-                     dvec_n dr, int N) {
+                     const dvec_n &V, const dvec_n &r,
+                     const dvec_n &dr, int N) {
   // solve max number in nmax
   int nmax_num = 0;
   for (int i = 0; i <= lmax; ++i) {
@@ -277,7 +277,7 @@ dvec_nxnxn getallPsi(dvec_nxn E, int lmax, ivec_n nmax,
 
   dvec_n Psi_temp;
   // ATTENTION: the Psiall definition is N * l * n, for Kokkos parallel efficient
-  dvec_nxnxn Psiall("Psiall 3 dimension", N + 1, lmax + 1, nmax_num + 1);
+  dvec_nxnxn Psiall("Psiall", N + 1, lmax + 1, nmax_num + 1);
 
   for (int l = 0; l <= lmax; l++) {
     for (int n = 0; n <= nmax(l); n++) {
@@ -290,9 +290,9 @@ dvec_nxnxn getallPsi(dvec_nxn E, int lmax, ivec_n nmax,
 
 dvec_n getRho(dvec_nxnxn Psi, dvec_nxn F, int lmax,
               ivec_n nmax, int N) {
-  dvec_n Rho("Rho density", N + 1);
-  printf("lmax %d\n", lmax);
-  printf("nmax(0) %d\n", nmax(0));
+  dvec_n Rho("Rho", N + 1);
+//  printf("lmax %d\n", lmax);
+//  printf("nmax(0) %d\n", nmax(0));
   Kokkos::parallel_for(N + 1, KOKKOS_LAMBDA(const int k) {
     for (int l = 0; l <= lmax; ++l) {
       for (int n = 0; n <= nmax(l); ++n) {
@@ -303,16 +303,16 @@ dvec_n getRho(dvec_nxnxn Psi, dvec_nxn F, int lmax,
   return Rho;
 }
 
-dvec_n derivs_Poisson(double x, dvec_n y, int k,
-                      dvec_n Rho, dvec_n r,
-                      dvec_n dr, int N) {
-  dvec_n dydx("dydx", 2);
+dvec_2 derivs_Poisson(double x, dvec_2 y, int k,
+                      const dvec_n &Rho, const dvec_n &r,
+                      const dvec_n &dr, int N) {
+  dvec_2 dydx("dydx");
   dydx(0) = y(1) * dr(k);
   dydx(1) = -Rho(k) / r(k) * dr(k);
   return dydx;
 }
 
-dvec_n getphi(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
+dvec_n getphi(const dvec_n &Rho, const dvec_n &r, const dvec_n &dr, int N) {
   /*
       Output:
 
@@ -325,7 +325,7 @@ dvec_n getphi(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
   */
 
   int n = 2;
-  dvec_n y("y", n); /* NR vector for diff eq's */
+  dvec_2 y("y"); /* NR vector for diff eq's */
   dvec_n Phi("Phi", N + 1); /* NR vector Phi = r*phi */
   dvec_n phi("phi", N + 1);
   double x, h;
@@ -395,7 +395,7 @@ double excPZ(double rs) {
       alpha = 0.75 * std::pow(3.0 / 2.0 / pi, 2.0 / 3.0);
 
   if (rs < 0) {
-    std::cerr << "error from excP: rs must be positive! But rs = " << rs << std::endl;
+    fprintf(stderr, "error from excP: rs must be positive! But rs = %f", rs);
     exit(1);
   }
   if (rs < 1) {
@@ -431,7 +431,7 @@ double excpPZ(double rs) {
       alpha = 0.75 * std::pow((3. / 2. / pi), (2. / 3.));
 
   if (rs < 0.) {
-    std::cerr << "error from excPZ: rs must be positive! But rs = " << rs << std::endl;
+    fprintf(stderr, "error from excPZ: rs must be positive! But rs = %f", rs);
     exit(1);
   }
 
@@ -493,7 +493,7 @@ double excp(double rs) {
   );
 }
 
-dvec_n getVxc(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
+dvec_n getVxc(const dvec_n &Rho, const dvec_n &r, const dvec_n &dr, int N) {
   // constant
   double pi = std::atan(1) * 4;
 
@@ -520,7 +520,7 @@ dvec_n getVxc(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
   return Vxc;
 }
 
-dvec_n getDelta_eps_xc(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
+dvec_n getDelta_eps_xc(const dvec_n &Rho, const dvec_n &r, const dvec_n &dr, int N) {
   // constant
   double pi = std::atan(1) * 4;
   // BUG FIXED
@@ -546,11 +546,11 @@ dvec_n getDelta_eps_xc(dvec_n Rho, dvec_n r, dvec_n dr, int N) {
 }
 
 double getExc(std::function<double(double)> exc,
-              dvec_n Rho,
-              dvec_n r,
-              dvec_n dr,
+              const dvec_n &Rho,
+              const dvec_n &r,
+              const dvec_n &dr,
               int N) {
-  dvec_n integrand("integrand", N + 1);
+  dvec_n integrand("integ", N + 1);
   double rs;
   for (int k = 0; k <= N; ++k) {
     // attention !!!

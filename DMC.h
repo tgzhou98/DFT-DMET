@@ -15,7 +15,6 @@
 #include <fstream>
 #include <iostream>
 #include <random>
-#include <string>
 #include <list>
 typedef Kokkos::View<double[3]> dvec3;
 typedef Kokkos::View<double *[3]> dmat_nx3;

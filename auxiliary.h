@@ -8,17 +8,18 @@
 #include <cassert>
 #include <cmath>
 #include <functional>
-#include <iostream>
+#include <cstdio>
 #include <memory>
 #include <numeric>
 #include <vector>
 #include "Kokkos_Core.hpp"
 typedef Kokkos::View<double *> dvec_n;
+typedef Kokkos::View<double[2]> dvec_2;
 typedef Kokkos::View<int *> ivec_n;
 typedef Kokkos::View<double **> dvec_nxn;
 typedef Kokkos::View<double ***> dvec_nxnxn;
 typedef std::function<double(double)> func_d;
-typedef std::function<dvec_n(double, dvec_n, int,
+typedef std::function<dvec_n(double, dvec_2, int,
                              dvec_n, dvec_n,
                              dvec_n, int)>
     derivs_func;
@@ -29,7 +30,7 @@ typedef std::function<double(double, int, dvec_n,
 /* TOL is the error tolerance in E found by auto Sch. solver */
 #define TOL (1.e-12)
 #define PSIP_INIT (1.e-20)
-#define ITER_MAX 40
+#define ITER_MAX 80
 #define MAXIT 120
 
 /* constants for preventing overflow problem */
@@ -47,18 +48,18 @@ template<typename T>
 int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 
 void interpolate(dvec_n f, int N);
-dvec_n runge_kutta_4(dvec_n y, int n, double x, double h,
+dvec_2 runge_kutta_4(dvec_2 y, int n, double x, double h,
                      derivs_func derivs, int k, int dk, dvec_n f,
-                     dvec_n r, dvec_n dr, int N);
+                     const dvec_n &r, const dvec_n &dr, int N);
 
-double simpson(dvec_n f, dvec_n r, dvec_n dr,
+double simpson(dvec_n f, const dvec_n &r, const dvec_n &dr,
                int N);
 double root_bisection(func_to_root func, double x1, double x2, double xacc,
-                      int match, dvec_n V, dvec_n r,
-                      dvec_n dr, int N);
+                      int match, const dvec_n &V, const dvec_n &r,
+                      const dvec_n &dr, int N);
 
 double zriddrp480(func_to_root func, double x1, double x2, double xacc,
-                  int match, dvec_n V, dvec_n r,
-                  dvec_n dr, int N);
+                  int match, const dvec_n &V, const dvec_n &r,
+                  const dvec_n &dr, int N);
 
 #endif // DFT_AUXILIARY_H
