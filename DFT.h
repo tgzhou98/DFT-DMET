@@ -2,9 +2,9 @@
 // Created by 周天罡 on 11/13/18.
 //
 
-#ifndef DFT_PHYSICS_H
-#define DFT_PHYSICS_H
-#include "auxiliary.h"
+#ifndef DFT_H
+#define DFT_H
+#include "DFT_auxiliary.h"
 
 double func_schrodinger(double E, int match, const dvec_n &V,
                         const dvec_n &r, const dvec_n &dr, int N);
@@ -62,4 +62,4 @@ double getExc(std::function<double(double)> exc,
               const dvec_n &dr,
               int N);
 
-#endif // DFT_PHYSICS_H
+#endif // DFT_H

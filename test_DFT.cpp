@@ -2,9 +2,8 @@
 // Created by 周天罡 on 2018-12-03.
 //
 
-#include "auxiliary.h"
-#include "physics.h"
-#include "DMC.h"
+#include "DFT_auxiliary.h"
+#include "DFT.h"
 #include "gtest/gtest.h"
 
 TEST(schrodinger, Edebug) {

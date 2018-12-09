@@ -2,7 +2,7 @@
 // Created by 周天罡 on 11/13/18.
 //
 
-#include "physics.h"
+#include "DFT.h"
 
 double func_schrodinger(double E, int match, const dvec_n &V,
                         const dvec_n &r, const dvec_n &dr, int N) {

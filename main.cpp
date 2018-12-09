@@ -1,5 +1,5 @@
-#include "auxiliary.h"
-#include "physics.h"
+#include "DFT_auxiliary.h"
+#include "DFT.h"
 #include "DMC.h"
 #include "gtest/gtest.h"
 //

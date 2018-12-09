@@ -22,7 +22,6 @@ typedef Kokkos::View<double *> dvec_n;
 typedef Kokkos::View<double **> dmat_nxn;
 typedef Kokkos::View<double **[3]> dtensor_nxnx3;
 
-template<int electrons>
 class walkers {
  public:
   walkers(int initial_N_walkers, int elec_in_atom);
@@ -33,8 +32,7 @@ class walkers {
 
 // IMPORTANT: adjust with potential
 // Ensure that the trial wavefunction contains all of the atoms
-  std::mt19937 randgen;
-  const double alpha = 0.4; // stddev of trial wave function
+  const double alpha = 0.8; // stddev of trial wave function
 
   const double dt = 0.01;
 

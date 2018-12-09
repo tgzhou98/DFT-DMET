@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(DFT)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 11)
 
 
 #find_package(MKL)
@@ -34,11 +34,20 @@ endif ()
 if (NOT EXISTS "${PROJECT_SOURCE_DIR}/kokkos/CMakeLists.txt" AND NOT EXISTS "${PROJECT_SOURCE_DIR}/googletest/CMakeLists.txt")
     message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
 endif ()
-
+###############
+# Add Kokkos
+###############
 add_subdirectory(${PROJECT_SOURCE_DIR}/kokkos)
 include_directories(${PROJECT_SOURCE_DIR}/kokkos/core/src ${PROJECT_BINARY_DIR}/kokkos ${PROJECT_SOURCE_DIR}/cmake-build-debug/kokkos)
 # ${PROJECT_SOURCE_DIR}/cmake-build-debug/kokkos or ${PROJECT_BINARY_DIR}/kokkos has   #include <KokkosCore_config.h>
 # which is necessary
+
+
+################
+## Add splinter
+################
+#add_subdirectory(${PROJECT_SOURCE_DIR}/splinter)
+#include_directories(${PROJECT_SOURCE_DIR}/splinter/include ${PROJECT_BINARY_DIR}/splinter ${PROJECT_SOURCE_DIR}/cmake-build-debug/splinter)
 
 option(PACKAGE_TESTS "Build the tests" ON)
 if (PACKAGE_TESTS)
@@ -50,15 +59,17 @@ endif ()
 ################################
 # Normal Libraries & Executables
 ################################
-add_library(DFT auxiliary.cpp auxiliary.h physics.cpp physics.h DMC.cpp DMC.h)
-add_executable(DFT_std main.cpp)
+add_library(DFT DFT_auxiliary.cpp DFT_auxiliary.h DFT.cpp DFT.h)
+add_library(DMC DMC.cpp DMC.h)
+add_executable(DMET main.cpp)
 # Key idea: SEPARATE OUT your main() function into its own file so it can be its
 # own executable. Separating out main() means you can add this library to be
 # used elsewhere.
 
 # Have build kokkos first when building libDFT, so use `target_link_libraries(libDFT kokkos)`
 target_link_libraries(DFT kokkos)
-target_link_libraries(DFT_std DFT kokkos)
+target_link_libraries(DMC kokkos)
+target_link_libraries(DMET DFT DMC kokkos)
 
 #target_link_libraries(DFT GTest::GTest GTest::Main kokkos)
 #target_link_libraries(DFT gtest gtest_main)
@@ -67,11 +78,15 @@ target_link_libraries(DFT_std DFT kokkos)
 # Unit Tests
 ##############
 add_executable(run_DFT_unit_tests test_DFT.cpp)
+add_executable(run_DMC_unit_tests test_DMC.cpp)
 
 # Extra linking for the project.
 target_link_libraries(run_DFT_unit_tests kokkos DFT)
+target_link_libraries(run_DMC_unit_tests kokkos DMC)
 
 # Standard linking to gtest stuff.
 target_link_libraries(run_DFT_unit_tests gtest gtest_main)
+target_link_libraries(run_DMC_unit_tests gtest gtest_main)
 
 add_test(AllTestsInDFT run_DFT_unit_tests)
+add_test(AllTestsInDMC run_DMC_unit_tests)

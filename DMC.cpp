@@ -4,23 +4,20 @@
 
 #include "DMC.h"
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "NotAssignable"
-
-template<int electrons>
-walkers<electrons>::walkers(int initial_N_walkers, int elec_in_atom) {
+walkers::walkers(int initial_N_walkers, int elec_in_atom) {
   walkers_of_elec_conf =
       dtensor_nxnx3("walkers_of_elec", int(MORE_SPACE_RATIO * double(initial_N_walkers)), elec_in_atom);
   // initial random number
 
-  randgen = std::mt19937(std::chrono::high_resolution_clock::now().time_since_epoch().count());
   // initial configuration using random number;
-  std::normal_distribution<double> dist(0, alpha);
   // initial using parallel
   Kokkos::parallel_for(walkers_of_elec_conf.extent(0), KOKKOS_LAMBDA(const int i) {
     // Acesss the View just like a Fortran array.  The layout depends
     // on the View's memory space, so don't rely on the View's
     // physical memory layout unless you know what you're doing.
+    std::normal_distribution<double> dist(0, alpha);
+    std::random_device rd{};
+    std::mt19937 randgen{rd()};
     for (int j = 0; j < walkers_of_elec_conf.extent(1); ++j) {
       walkers_of_elec_conf(i, j, 0) = dist(randgen);
       walkers_of_elec_conf(i, j, 1) = dist(randgen);
@@ -131,4 +128,3 @@ walkers<electrons>::walkers(int initial_N_walkers, int elec_in_atom) {
 //  return kinetic + potential;
 //}
 
-#pragma clang diagnostic pop

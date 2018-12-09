@@ -2,7 +2,7 @@
 // Created by 周天罡 on 11/13/18.
 //
 
-#include "auxiliary.h"
+#include "DFT_auxiliary.h"
 
 void interpolate(dvec_n f, int N) {
   /*
